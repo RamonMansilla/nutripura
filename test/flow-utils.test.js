@@ -16,7 +16,8 @@ test("calculates the same discounted total for a two-product order", () => {
       ],
       subtotal: 39840,
       discount: 3984,
-      amount: 35856,
+      shipping: 3990,
+      amount: 39846,
     },
   );
 });
