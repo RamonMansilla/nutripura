@@ -7,18 +7,20 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "dev": "vite storefront",
+    "dev": "node server.js",
+    "start": "node server.js",
     "build": "node scripts/build-storefront.mjs",
-    "preview": "vite preview",
+    "preview": "NODE_ENV=production node server.js",
     "test": "node --test"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.99.0",
     "@vitejs/plugin-react": "latest",
+    "express": "^5.3.0",
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
     "read-excel-file": "^9.3.10",
-    "@supabase/supabase-js": "^2.99.0",
     "typescript": "latest",
     "vite": "latest"
   },
