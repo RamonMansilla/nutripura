@@ -16,10 +16,10 @@ const pics = {
 };
 const products = [
   { id:'berberina', title:'Berberina Nutre Pure', price:24990, tag:'BERBERINA', main:'berberina',
-    slides:['berberina','berberina-escena','botanical','duo'],
+    slides:['berberina'],
     notes:['Fórmula herbal líquida de 60 ml','Presentación en frasco con gotario'] },
   { id:'magnesio', title:'Magnesium Complex Nutre Pure', price:14850, tag:'MAGNESIO', main:'magnesio',
-    slides:['magnesio','magnesio-escena','ritual','duo'],
+    slides:['magnesio'],
     notes:['Complejo mineral líquido de 50 ml','Presentación en frasco con gotario'] }
 ];
 const read = (key, fallback) => {
@@ -77,6 +77,14 @@ function setMarketingConsent(accepted) {
 const storedCart = read('np-nutre-pure-cart', {});
 let cart = Object.fromEntries(products.map(({id}) => [id, Math.min(99, Math.max(0, Math.trunc(Number(storedCart?.[id])) || 0))]));
 const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const SHIPPING_FEE = 3990;
+function selectProduct(id, scroll = false) {
+  if (!products.some(product => product.id === id)) return;
+  document.body.dataset.product = id;
+  document.querySelectorAll('[data-select-product]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.selectProduct === id)));
+  if (scroll) document.getElementById(id)?.scrollIntoView({ behavior: motion.matches ? 'instant' : 'smooth', block: 'start' });
+}
+
 function trackProductView(id) {
   if (viewedProductIds.has(id)) return;
   const product = products.find(item => item.id === id);
@@ -98,12 +106,11 @@ byId('products').innerHTML = products.map(product => {
     <div class="gallery" tabindex="0" aria-label="Galería de ${product.tag}">
       ${slides.map((name, i) => `<button data-photo="${name}" class="${i === 0 ? 'product-packshot' : ''}" aria-label="Ampliar imagen ${i + 1}">${photoMarkup(name)}</button>`).join('')}
     </div>
-    <div class="thumbs" aria-label="Elegir imagen">${slides.map((name, i) => `<button data-slide="${i}" class="${i === 0 ? 'product-packshot' : ''}" aria-current="${i === 0}" aria-label="Mostrar imagen ${i + 1}">${photoMarkup(name)}</button>`).join('')}</div>
+    <div class="product-quickbuy"><p class="product-price"><del>${money(product.price)}</del> <strong>${money(product.price - Math.round(product.price * .1))}</strong><small>10 % de descuento web</small></p><p class="shipping-price">Envío: <strong>${money(SHIPPING_FEE)}</strong> por pedido</p><button class="pill" data-add="${product.id}">COMPRAR ${product.tag}</button></div>
     <span class="tag">${product.tag}</span><h3>${product.title}</h3>
     <ul>${product.notes.map(note => '<li>' + note + '</li>').join('')}</ul>
     <div class="product-facts"><span>Contenido<br><b>${product.id === 'berberina' ? '60 ml' : '50 ml'}</b></span><span>Presentación<br><b>En gotas</b></span></div>
-    <p class="product-price"><del>${money(product.price)}</del> <strong>${money(product.price - Math.round(product.price * .1))}</strong><small>Con 10 % de descuento web</small></p>
-    <button class="pill" data-add="${product.id}">AGREGAR AL CARRITO</button>
+    <button class="pill product-bottom-cta" data-add="${product.id}">AGREGAR AL CARRITO</button>
   </article>`;
 }).join('');
 
@@ -136,7 +143,7 @@ document.querySelectorAll('.product').forEach(product => {
 function totals() {
   const subtotal = products.reduce((amount, item) => amount + cart[item.id] * item.price, 0);
   const savings = Math.round(subtotal * .1);
-  return { subtotal, savings, total:subtotal - savings };
+  return { subtotal, savings, shipping:SHIPPING_FEE, total:subtotal - savings + SHIPPING_FEE };
 }
 function renderCart(focusControl) {
   const count = Object.values(cart).reduce((sum, value) => sum + value, 0);
@@ -153,7 +160,7 @@ function renderCart(focusControl) {
       <div class="qty"><button data-qty="${item.id}" data-delta="-1" aria-label="Quitar una unidad de ${item.title}">−</button><span>${cart[item.id]}</span><button data-qty="${item.id}" data-delta="1" ${cart[item.id] >= 99 ? "disabled" : ""} aria-label="Agregar una unidad de ${item.title}">+</button></div></div><span>${money(cart[item.id] * item.price)}</span></div>`).join('') +
       '<p class="total"><span>Subtotal</span><span>' + money(amounts.subtotal) + '</span></p>' +
       '<p class="total"><span>Descuento web 10 %</span><span>−' + money(amounts.savings) + '</span></p>' +
-      giftSummary() + '<p class="total"><strong>Total de productos</strong><strong>' + money(amounts.total) + '</strong></p><button class="pill wide" id="continue-checkout">CONTINUAR AL PEDIDO</button>';
+      giftSummary() + '<p class="total"><span>Despacho</span><span>' + money(amounts.shipping) + '</span></p><p class="total"><strong>Total a pagar</strong><strong>' + money(amounts.total) + '</strong></p><button class="pill wide" id="continue-checkout">CONTINUAR AL PEDIDO</button>';
   }
   if (focusControl) (byId('cart-body').querySelector(focusControl) || byId('cart').querySelector('[data-close]')).focus();
 }
@@ -184,7 +191,7 @@ function checkout() {
   const amounts = totals();
   byId('checkout-body').innerHTML = '<div class="checkout-welcome"><p class="eyebrow">UN MOMENTO PARA TI</p><h3>Tu bienestar empieza aquí.</h3><p>Revisa lo que elegiste y los regalos que te acompañan.</p></div><div class="checkout-items">' +
     products.filter(item => cart[item.id]).map(item => '<div class="checkout-item">' + photoMarkup(item.main) + '<div><strong>' + item.title + '</strong><small>' + cart[item.id] + ' × ' + money(item.price) + '</small></div></div>').join('') + '</div>' +
-    giftSummary() + '<p class="total"><span>Descuento web · 10 %</span><span>−' + money(amounts.savings) + '</span></p><p class="total checkout-grand"><strong>Total de productos</strong><strong>' + money(amounts.total) + '</strong></p><p class="checkout-note">El despacho no está incluido en este pago y se coordinará por separado.</p>' +
+    giftSummary() + '<p class="total"><span>Descuento web · 10 %</span><span>−' + money(amounts.savings) + '</span></p><p class="total"><span>Despacho</span><span>' + money(amounts.shipping) + '</span></p><p class="total checkout-grand"><strong>Total a pagar</strong><strong>' + money(amounts.total) + '</strong></p><p class="checkout-note">El total incluye el despacho de $3.990.</p>' +
     '<button class="back-cart" id="back-cart">← Volver al carrito</button><form class="checkout-form" id="flow-checkout-form"><label for="checkout-email">Correo electrónico para el pago<input id="checkout-email" name="email" type="email" autocomplete="email" maxlength="254" required></label><p class="checkout-note">Flow procesará tu pago de forma segura. Los libros digitales estarán disponibles después de confirmar el pago.</p><p class="checkout-error" id="checkout-error" role="alert" hidden></p><button class="pill wide">PAGAR CON FLOW</button></form>';
   openDialog('checkout');
 }
@@ -207,9 +214,11 @@ document.addEventListener('click', event => {
     }
     return;
   }
+  if (button.dataset.selectProduct) selectProduct(button.dataset.selectProduct, true);
   if ('close' in button.dataset) button.closest('dialog').close();
   if (button.dataset.open) openDialog(button.dataset.open);
   if (button.dataset.add) {
+    selectProduct(button.dataset.add);
     changeQuantity(button.dataset.add, 1);
     const product = products.find(item => item.id === button.dataset.add);
     if (product) trackMeta('AddToCart', {
@@ -353,7 +362,7 @@ byId('quote').addEventListener('touchend', event => {
   if (Math.abs(distance) > 35) renderQuote(quoteIndex + (distance < 0 ? 1 : -1));
 }, { passive:true });
 renderQuote(0);
-byId('mosaic').innerHTML = ['hero','berberina-escena','magnesio-escena','botanical','ritual','duo'].map(name => '<button aria-label="Ampliar: ' + pics[name] + '" data-photo="' + name + '">' + photoMarkup(name) + '</button>').join('');
+byId('mosaic').innerHTML = ['berberina','magnesio'].map(name => '<button aria-label="Ampliar: ' + pics[name] + '" data-photo="' + name + '">' + photoMarkup(name) + '</button>').join('');
 
 const observer = new IntersectionObserver(entries => entries.forEach(entry => {
   if (!entry.isIntersecting) return;
